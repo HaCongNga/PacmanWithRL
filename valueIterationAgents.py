@@ -12,24 +12,9 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
-# valueIterationAgents.py
-# -----------------------
-# Licensing Information:  You are free to use or extend these projects for
-# educational purposes provided that (1) you do not distribute or publish
-# solutions, (2) you retain this notice, and (3) you provide clear
-# attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
-# Attribution Information: The Pacman AI projects were developed at UC Berkeley.
-# The core projects and autograders were primarily created by John DeNero
-# (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
-# Student side autograding was added by Brad Miller, Nick Hay, and
-# Pieter Abbeel (pabbeel@cs.berkeley.edu).
-
-
 import mdp, util
 
 from learningAgents import ValueEstimationAgent
-import collections
 
 class ValueIterationAgent(ValueEstimationAgent):
     """
@@ -57,11 +42,30 @@ class ValueIterationAgent(ValueEstimationAgent):
         self.discount = discount
         self.iterations = iterations
         self.values = util.Counter() # A Counter is a dict with default 0
-        self.runValueIteration()
 
-    def runValueIteration(self):
-        # Write value iteration code here
-        "*** YOUR CODE HERE ***"
+        states = mdp.getStates()
+        
+        for state in states:
+            self.values[state] = 0.0
+            
+        k = 0
+        
+        
+        while k < iterations:
+            newValues = self.values.copy()
+            for state in states:
+                if mdp.isTerminal(state):
+                    newValues[state] = 0.0
+                else:
+                    qValues = []
+                    for action in mdp.getPossibleActions(state):
+                        qValue = self.computeQValueFromValues(state, action)
+                        qValues.append(qValue)
+                    newValues[state] = max(qValues)
+            self.values = newValues
+            k += 1
+        
+            
 
 
     def getValue(self, state):
@@ -76,8 +80,16 @@ class ValueIterationAgent(ValueEstimationAgent):
           Compute the Q-value of action in state from the
           value function stored in self.values.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        trans = self.mdp.getTransitionStatesAndProbs(state, action)
+        
+        qValue = 0.0
+        
+        for nextState, prob in trans:
+            qValue += (prob*(self.mdp.getReward(state, action, nextState) + self.discount*self.values[nextState]))
+        
+        return qValue
+        
+        
 
     def computeActionFromValues(self, state):
         """
@@ -88,8 +100,16 @@ class ValueIterationAgent(ValueEstimationAgent):
           there are no legal actions, which is the case at the
           terminal state, you should return None.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        actions = self.mdp.getPossibleActions(state)
+        qMax = -float('inf')
+        bestAction = None
+        for action in actions:
+            qValue = self.computeQValueFromValues(state, action)
+            if qValue > qMax:
+                qMax = qValue
+                bestAction = action
+        return bestAction
+        
 
     def getPolicy(self, state):
         return self.computeActionFromValues(state)
@@ -100,25 +120,3 @@ class ValueIterationAgent(ValueEstimationAgent):
 
     def getQValue(self, state, action):
         return self.computeQValueFromValues(state, action)
-
-
-class PrioritizedSweepingValueIterationAgent(ValueIterationAgent):
-    """
-        * Please read learningAgents.py before reading this.*
-
-        A PrioritizedSweepingValueIterationAgent takes a Markov decision process
-        (see mdp.py) on initialization and runs prioritized sweeping value iteration
-        for a given number of iterations using the supplied parameters.
-    """
-    def __init__(self, mdp, discount = 0.9, iterations = 100, theta = 1e-5):
-        """
-          Your prioritized sweeping value iteration agent should take an mdp on
-          construction, run the indicated number of iterations,
-          and then act according to the resulting policy.
-        """
-        self.theta = theta
-        ValueIterationAgent.__init__(self, mdp, discount, iterations)
-
-    def runValueIteration(self):
-        "*** YOUR CODE HERE ***"
-
