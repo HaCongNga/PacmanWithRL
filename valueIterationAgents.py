@@ -120,3 +120,50 @@ class ValueIterationAgent(ValueEstimationAgent):
 
     def getQValue(self, state, action):
         return self.computeQValueFromValues(state, action)
+        
+from util import PriorityQueue
+
+class PrioritizedSweepingValueIterationAgent(ValueIterationAgent):
+    def __init__(self, mdp, discount=0.9, iterations=100, theta=1e-5):
+        self.theta = theta
+        ValueIterationAgent.__init__(self, mdp, discount, iterations)
+
+    def computePredecessors(self):
+        predecessors = {}
+        for state in self.mdp.getStates():
+            predecessors[state] = set()
+        
+        for state in self.mdp.getStates():
+            for action in self.mdp.getPossibleActions(state):
+                for successor, probability in self.mdp.getTransitionStatesAndProbs(state, action):
+                    if probability > 0:
+                        predecessors[successor].add(state)
+
+        return predecessors
+
+    def runValueIteration(self):
+        predecessors = self.computePredecessors()
+
+        priorityQueue = PriorityQueue()
+
+        for state in self.mdp.getStates():
+            if not self.mdp.isTerminal(state):
+                maxQValue = max([self.getQValue(state, action) for action in self.mdp.getPossibleActions(state)])
+                diff = abs(self.values[state] - maxQValue)
+                priorityQueue.update(state, -diff)
+
+        for iteration in range(self.iterations):
+            if priorityQueue.isEmpty():
+                break
+
+            currentState = priorityQueue.pop()
+            if not self.mdp.isTerminal(currentState):
+                maxQValue = max([self.getQValue(currentState, action) for action in self.mdp.getPossibleActions(currentState)])
+                self.values[currentState] = maxQValue
+
+            for predecessor in predecessors[currentState]:
+                if not self.mdp.isTerminal(predecessor):
+                    maxQValue = max([self.getQValue(predecessor, action) for action in self.mdp.getPossibleActions(predecessor)])
+                    diff = abs(self.values[predecessor] - maxQValue)
+                    if diff > self.theta:
+                        priorityQueue.update(predecessor, -diff)
